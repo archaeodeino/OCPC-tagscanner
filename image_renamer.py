@@ -5,7 +5,16 @@ import os, re, pytesseract
 #Below is the command to run a new training session via tesstrain
 #make training MODEL_NAME=OCPC START_MODEL=eng TESSDATA=../tessdata/ MAX_ITERATIONS=2000
 
+script_dir = os.path.dirname(__file__)
+input_path = os.path.join(script_dir, "input")
+output_path = os.path.join(script_dir, "output")
+png_path = os.path.join(script_dir, "converted_pngs")
+error_path = os.path.join(script_dir, "unreadable")
+
 spell = SpellChecker()
+#Set this variable to false to bypass taxon spellchecks, otherwise make sure the taxon is in the taxon_names.txt file
+spellcheck_taxon = True
+spell.word_frequency.load_text_file(os.path.join(script_dir, "taxon_names.txt"))
 
 def extract_text_from_image(image):
     text = pytesseract.image_to_string(image, lang='eng', config= f'--psm 3 -c tessedit_char_whitelist=0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ,;-')
@@ -71,7 +80,6 @@ def find_next_space(text, start_index=0):
 def clean_accession(text):
     #cleans out extra characters
     text = text.replace(' ', '')
-    text = text.replace('', '')
     text = text.replace('.', '')
     #print(text)
     return text
@@ -106,14 +114,14 @@ def text_to_dict(text):
             "Element": get_element(list_of_text[i + 3]),
             "Portion": get_portion(list_of_text[i + 3])
         }
+        if spellcheck_taxon:
+            if spell.correction(image_dict["Taxon"]) and image_dict["Taxon"] != spell.correction(image_dict["Taxon"]):
+                image_dict["Taxon"] = spell.correction(image_dict["Taxon"])
+                image_dict["Taxon"] = image_dict["Taxon"].capitalize()
+
         return(image_dict)
     return
 
-script_dir = os.path.dirname(__file__)
-input_path = os.path.join(script_dir, "input")
-output_path = os.path.join(script_dir, "output")
-png_path = os.path.join(script_dir, "converted_pngs")
-error_path = os.path.join(script_dir, "unreadable")
 
 for filename in os.listdir(input_path):
     full_path = os.path.join(input_path, filename)
@@ -142,11 +150,9 @@ for filename in os.listdir(input_path):
     # OCPC [#SPEC] [taxon name] [element] [portion]
     if fossil_info is not None:
         new_name = "OCPC_" + fossil_info["Specimen"] + "_" + fossil_info["Taxon"] + "_" + fossil_info["Element"] + "_" + fossil_info["Portion"] + ".png"
-        #just in case any weird characters slipped through
-        new_name = new_name.replace(' ', '')
-        new_name = new_name.replace('|', '')
-        new_name = new_name.replace('+', '')
-        new_name = new_name.replace(':', '')
+        #just in case any weird characters slipped through: ,;-
+        for symbol in [" ", ',', ';', '-']:
+            new_name = new_name.replace(symbol, '')
         new_path = os.path.join(output_path, (new_name))
     else:
         if not new_name:
