@@ -8,8 +8,7 @@ import os, re, pytesseract
 spell = SpellChecker()
 
 def extract_text_from_image(image):
-    #blacklist = "|"
-    text = pytesseract.image_to_string(image, lang='eng', config= f'--psm 3')
+    text = pytesseract.image_to_string(image, lang='eng', config= f'--psm 3 -c tessedit_char_whitelist=0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ,;-')
     #try psm 11?
     #enable the line below for debugging
     #print(text)
@@ -72,7 +71,7 @@ def find_next_space(text, start_index=0):
 def clean_accession(text):
     #cleans out extra characters
     text = text.replace(' ', '')
-    text = text.replace(':', '')
+    text = text.replace('', '')
     text = text.replace('.', '')
     #print(text)
     return text
