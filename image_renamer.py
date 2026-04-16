@@ -46,14 +46,25 @@ def get_element(text):
     return "".join(filter(str.isalpha, word))
 
 def get_portion(text):
+    #With portions, it is most likely to be complete, fragment, or partial. So, if OCR fails on the index, we search for most similar instead
     start_index = text.find(",")
     end_index = text.find(";")
-    word = text[start_index + 2 : end_index]
-    word = "".join(filter(str.isalpha, word))
-    if spell.correction(word) and word != spell.correction(word):
-        return spell.correction(word)
+    if start_index == -1:
+        if "frag" in text:
+            return "fragment"
+        elif "comp" in text:
+            return "complete"
+        elif "part" in text:
+            return "partial"
+        else:
+            return "none"
     else:
-        return word
+        word = text[start_index + 2 : end_index]
+        word = "".join(filter(str.isalpha, word))
+        if spell.correction(word) and word != spell.correction(word):
+            return spell.correction(word)
+        else:
+            return word
 
 def find_next_number(text, start=0):
     #returns the next index of a number
@@ -78,21 +89,21 @@ def find_next_space(text, start_index=0):
     return None
 
 def clean_accession(text):
-    #cleans out extra characters
+    # cleans out extra characters
     text = text.replace(' ', '')
     text = text.replace('.', '')
-    #print(text)
+    # print(text)
     return text
 
 
 def text_to_dict(text):
-    #Step One, split the text into a list for each new line 
+    # Step One, split the text into a list for each new line 
     og_list = text.splitlines()
-    #remove any empty lines
+    # remove any empty lines
     list_of_text =  [item for item in og_list if (item and len(item)>5)]
-    #print(list_of_text)
+    # print(list_of_text)
 
-    #step 2. get the start index
+    # step 2. get the start index
     i=0
     acc= "None"
     can_process = False
@@ -104,7 +115,7 @@ def text_to_dict(text):
         elif not can_process:
             i += 1
 
-    #Step 3, grab the data we actually need from the strings
+    # Step 3, grab the data we actually need from the strings
     if can_process:
         image_dict = {
             "Accession": get_accession(acc),
@@ -125,18 +136,19 @@ def text_to_dict(text):
 
 for filename in os.listdir(input_path):
     full_path = os.path.join(input_path, filename)
-    #check for jpgs
+    # check for jpgs
     print(filename)
     if "JPG" in filename:
         old_img = Image.open(full_path)
         new_name = filename.replace("JPG", "png")
         new_path = os.path.join(png_path, (new_name))
+        # JPG images are saved upsidedown from the camera for some reason
         flipped_img = old_img.transpose(Image.FLIP_TOP_BOTTOM)
         flip_again = flipped_img.transpose(Image.FLIP_LEFT_RIGHT)
         flip_again.save(new_path)
         full_path = os.path.join(png_path, new_name)
 
-    #cleaning image for processing: convert to grayscale and apply threshold
+    # cleaning image for processing: convert to grayscale and apply threshold
     color_img = Image.open(full_path)
     gray_img = color_img.convert('L')
     threshold = 128
@@ -159,8 +171,8 @@ for filename in os.listdir(input_path):
             new_name = filename
         new_path = os.path.join(error_path, (new_name))
 
-    #enable the following line for debugging
-    #print(new_path)
+    # enable the following line for debugging
+    # print(new_path)
     image = Image.open(full_path)
     image.save(new_path)
 
